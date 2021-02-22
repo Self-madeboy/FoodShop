@@ -1,5 +1,6 @@
 package com.imooc.controller;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.imooc.pojo.UserAddress;
 import com.imooc.pojo.bo.AddressBO;
 import com.imooc.pojo.vo.NewItemsVO;
@@ -13,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
@@ -42,9 +44,10 @@ public class AddressController {
     public IMOOCJSONResult list(
             @RequestParam String userId) {
 
-        if (StringUtils.isBlank(userId)) {
+/*        if (StringUtils.isBlank(userId)) {
             return IMOOCJSONResult.errorMsg("");
-        }
+        }*/
+        Assert.isTrue(StringUtils.isBlank(userId),"请输入正确的userId");
 
         List<UserAddress> list = addressService.queryAll(userId);
         return IMOOCJSONResult.ok(list);
