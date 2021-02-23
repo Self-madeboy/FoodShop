@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 import tk.mybatis.mapper.entity.Example;
 
 import java.util.Date;
@@ -28,57 +29,50 @@ public class AddressServiceImpl implements AddressService {
     @Autowired
     private Sid sid;
 
-    @Transactional(propagation = Propagation.SUPPORTS)
+    @Transactional(propagation = Propagation.SUPPORTS, rollbackFor = Exception.class)
     @Override
     public List<UserAddress> queryAll(String userId) {
-
         UserAddress ua = new UserAddress();
         ua.setUserId(userId);
-
-        return userAddressMapper.select(ua);
+        List<UserAddress> select = userAddressMapper.select(ua);
+        return select;
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
     @Override
     public void addNewUserAddress(AddressBO addressBO) {
 
         // 1. 判断当前用户是否存在地址，如果没有，则新增为‘默认地址’
         Integer isDefault = 0;
         List<UserAddress> addressList = this.queryAll(addressBO.getUserId());
-        if (addressList == null || addressList.isEmpty() || addressList.size() == 0) {
+        if (addressList.size() == 0) {
             isDefault = 1;
         }
-
         String addressId = sid.nextShort();
 
         // 2. 保存地址到数据库
         UserAddress newAddress = new UserAddress();
         BeanUtils.copyProperties(addressBO, newAddress);
-
         newAddress.setId(addressId);
         newAddress.setIsDefault(isDefault);
         newAddress.setCreatedTime(new Date());
         newAddress.setUpdatedTime(new Date());
-
         userAddressMapper.insert(newAddress);
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
     @Override
     public void updateUserAddress(AddressBO addressBO) {
 
         String addressId = addressBO.getAddressId();
-
         UserAddress pendingAddress = new UserAddress();
         BeanUtils.copyProperties(addressBO, pendingAddress);
-
         pendingAddress.setId(addressId);
         pendingAddress.setUpdatedTime(new Date());
-
         userAddressMapper.updateByPrimaryKeySelective(pendingAddress);
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
     @Override
     public void deleteUserAddress(String userId, String addressId) {
 
@@ -89,20 +83,16 @@ public class AddressServiceImpl implements AddressService {
         userAddressMapper.delete(address);
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
     @Override
     public void updateUserAddressToBeDefault(String userId, String addressId) {
-
         // 1. 查找默认地址，设置为不默认
         UserAddress queryAddress = new UserAddress();
         queryAddress.setUserId(userId);
         queryAddress.setIsDefault(YesOrNo.YES.type);
-        List<UserAddress> list  = userAddressMapper.select(queryAddress);
-        for (UserAddress ua : list) {
-            ua.setIsDefault(YesOrNo.NO.type);
-            userAddressMapper.updateByPrimaryKeySelective(ua);
-        }
-
+        UserAddress userAddress = userAddressMapper.selectOne(queryAddress);
+        userAddress.setIsDefault(YesOrNo.NO.type);
+        userAddressMapper.updateByPrimaryKeySelective(userAddress);
         // 2. 根据地址id修改为默认的地址
         UserAddress defaultAddress = new UserAddress();
         defaultAddress.setId(addressId);
@@ -111,14 +101,15 @@ public class AddressServiceImpl implements AddressService {
         userAddressMapper.updateByPrimaryKeySelective(defaultAddress);
     }
 
-    @Transactional(propagation = Propagation.SUPPORTS)
+    @Transactional(propagation = Propagation.SUPPORTS,rollbackFor = Exception.class)
     @Override
     public UserAddress queryUserAddres(String userId, String addressId) {
 
         UserAddress singleAddress = new UserAddress();
         singleAddress.setId(addressId);
         singleAddress.setUserId(userId);
-
-        return userAddressMapper.selectOne(singleAddress);
+        UserAddress userAddress = userAddressMapper.selectOne(singleAddress);
+        Assert.notNull(userAddress,"没有该用户地址");
+        return userAddress;
     }
 }
